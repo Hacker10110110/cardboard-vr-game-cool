@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Cardboard VR Mini-Game</title>
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <style>
+      html, body { margin:0; height:100%; }
+      /* Fallback overlay for non-immersive mode instructions */
+      #tips { position:fixed; left:0; right:0; bottom:0; padding:10px 14px; 
+              font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+              font-size:14px; background:rgba(0,0,0,0.5); color:#fff; text-align:center; z-index:2; }
+      #tips a { color:#fff; text-decoration:underline; }
+    </style>
+  </head>
+  <body>
+    <div id="tips">Tap the <b>VR goggles</b> button to enter Cardboard mode. Gaze at targets to pop them!</div>
+
+    <a-scene renderer="antialias:true; colorManagement:true" xr-mode-ui="enabled: true">
+      <!-- Player rig + camera with gaze cursor ("fuse") -->
+      <a-entity id="rig" position="0 0 0">
+        <a-entity id="head" position="0 1.6 0">
+          <a-camera wasd-controls-enabled="false">
+            <a-cursor
+              fuse="true"
+              fuse-timeout="900"
+              raycaster="objects: .target, .restart; showLine: true">
+            </a-cursor>
+          </a-camera>
+        </a-entity>
+      </a-entity>
+
+      <!-- Ground -->
+      <a-plane rotation="-90 0 0" width="30" height="30" color="#7BC8A4"></a-plane>
+
+      <!-- Sky -->
+      <a-sky color="#ECECEC"></a-sky>
+
+      <!-- HUD: score and timer -->
+      <a-entity id="hud" position="0 1.9 -1.2">
+        <a-text id="scoreText" value="Score: 0" align="center" width="2.5" color="#111" position="-0.7 0 0"></a-text>
+        <a-text id="timerText" value="Time: 30" align="center" width="2.5" color="#111" position="0.7 0 0"></a-text>
+      </a-entity>
+
+      <!-- Game Over + Restart UI (hidden initially) -->
+      <a-entity id="gameOverUI" visible="false" position="0 1.6 -2">
+        <a-plane width="1.8" height="1.1" color="#222" opacity="0.8"></a-plane>
+        <a-text id="finalText" value="Game Over!" align="center" width="2.2" color="#fff" position="0 0.25 0"></a-text>
+        <a-entity class="restart targetable" position="0 -0.25 0">
+          <a-plane width="1.2" height="0.3" color="#4CC3D9"></a-plane>
+          <a-text value="RESTART (gaze)" align="center" width="1.6" color="#000" position="0 0 0.01"></a-text>
+        </a-entity>
+      </a-entity>
+
+      <!-- Targets -->
+      <a-box id="t1" class="target" color="#FF6B6B" depth="0.5" height="0.5" width="0.5"></a-box>
+      <a-sphere id="t2" class="target" color="#4ECDC4" radius="0.35"></a-sphere>
+      <a-octahedron id="t3" class="target" color="#FFD93D" radius="0.4"></a-octahedron>
+
+      <script>
+        // --- Game state ---
+        let score = 0;
+        let timeLeft = 30;
+        let running = false;
+        const targets = [];
+        let timerHandle = null;
+
+        const rig = document.getElementById('rig');
+        const scoreText = document.getElementById('scoreText');
+        const timerText = document.getElementById('timerText');
+        const gameOverUI = document.getElementById('gameOverUI');
+        const finalText = document.getElementById('finalText');
+
+        // Helper: random position on a ring in front of player
+        function randomTargetPosition() {
+          // radius 3.0–6.0, y 1.0–3.0, angle -60..60 degrees in front
+          const r = 3 + Math.random() * 3;
+          const deg = -60 + Math.random() * 120;
+          const ang = deg * Math.PI / 180;
+          const y = 1 + Math.random() * 2;
+          const x = Math.sin(ang) * r;
+          const z = -Math.cos(ang) * r;
+          return {x, y, z};
+        }
+
+        function placeTarget(el) {
+          const p = randomTargetPosition();
+          el.setAttribute('position', p);
+          el.setAttribute('scale', '1 1 1');
+          el.setAttribute('visible', true);
+        }
+
+        function popTarget(el) {
+          // animate pop: quick scale up then hide
+          el.emit('pop'); // for optional future animations
+          el.setAttribute('scale', '1.3 1.3 1.3');
+          setTimeout(() => el.setAttribute('visible', false), 80);
+          setTimeout(() => placeTarget(el), 400);
+        }
+
+        function updateHUD() {
+          scoreText.setAttribute('value', 'Score: ' + score);
+          timerText.setAttribute('value', 'Time: ' + timeLeft);
+        }
+
+        function startGame() {
+          score = 0;
+          timeLeft = 30;
+          running = true;
+          gameOverUI.setAttribute('visible', false);
+          updateHUD();
+          targets.forEach(placeTarget);
+          if (timerHandle) clearInterval(timerHandle);
+          timerHandle = setInterval(() => {
+            if (!running) return;
+            timeLeft -= 1;
+            updateHUD();
+            if (timeLeft <= 0) endGame();
+          }, 1000);
+        }
+
+        function endGame() {
+          running = false;
+          updateHUD();
+          clearInterval(timerHandle);
+          finalText.setAttribute('value', 'Game Over!\\nScore: ' + score + '\\nGaze the button to restart');
+          gameOverUI.setAttribute('visible', true);
+          // hide current targets so they don't distract
+          targets.forEach(el => el.setAttribute('visible', false));
+        }
+
+        // Setup targets and interactions
+        function initTargets() {
+          ['t1','t2','t3'].forEach(id => {
+            const el = document.getElementById(id);
+            targets.push(el);
+            placeTarget(el);
+            // On gaze fuse click
+            el.addEventListener('click', () => {
+              if (!running) return;
+              score += 1;
+              updateHUD();
+              popTarget(el);
+            });
+            // Simple highlight feedback when gazed
+            el.addEventListener('mouseenter', () => {
+              el.setAttribute('scale', '1.15 1.15 1.15');
+            });
+            el.addEventListener('mouseleave', () => {
+              el.setAttribute('scale', '1 1 1');
+            });
+          });
+        }
+
+        // Restart button gaze
+        function initRestart() {
+          const restart = gameOverUI.querySelector('.restart');
+          restart.classList.add('restart'); // for raycaster filter
+          restart.addEventListener('mouseenter', () => {
+            restart.querySelector('a-plane').setAttribute('color', '#FFC65D');
+          });
+          restart.addEventListener('mouseleave', () => {
+            restart.querySelector('a-plane').setAttribute('color', '#4CC3D9');
+          });
+          restart.addEventListener('click', () => {
+            startGame();
+          });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+          initTargets();
+          initRestart();
+          startGame();
+        });
+
+        // Hide the tips overlay once we go immersive
+        const scene = document.querySelector('a-scene');
+        scene.addEventListener('enter-vr', () => {
+          document.getElementById('tips').style.display = 'none';
+        });
+        scene.addEventListener('exit-vr', () => {
+          document.getElementById('tips').style.display = 'block';
+        });
+      </script>
+    </a-scene>
+  </body>
+</html>
