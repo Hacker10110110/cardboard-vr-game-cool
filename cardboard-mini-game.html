@@ -47,10 +47,9 @@
       <a-entity id="gameOverUI" visible="false" position="0 1.6 -2">
         <a-plane width="1.8" height="1.1" color="#222" opacity="0.8"></a-plane>
         <a-text id="finalText" value="Game Over!" align="center" width="2.2" color="#fff" position="0 0.25 0"></a-text>
-        <a-entity class="restart targetable" position="0 -0.25 0">
-          <a-plane width="1.2" height="0.3" color="#4CC3D9"></a-plane>
-          <a-text value="RESTART (gaze)" align="center" width="1.6" color="#000" position="0 0 0.01"></a-text>
-        </a-entity>
+       <a-plane class="restart" width="1.2" height="0.3" color="#4CC3D9" position="0 -0.25 0">
+  <a-text value="RESTART (gaze)" align="center" width="1.6" color="#000" position="0 0 0.01"></a-text>
+</a-plane>
       </a-entity>
 
       <!-- Targets -->
