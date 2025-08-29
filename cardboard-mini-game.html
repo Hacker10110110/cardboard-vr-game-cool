@@ -153,25 +153,27 @@
         }
 
         // Restart button gaze
-        function initRestart() {
-          const restart = gameOverUI.querySelector('.restart');
-          restart.classList.add('restart'); // for raycaster filter
-          restart.addEventListener('mouseenter', () => {
-            restart.querySelector('a-plane').setAttribute('color', '#FFC65D');
-          });
-          restart.addEventListener('mouseleave', () => {
-            restart.querySelector('a-plane').setAttribute('color', '#4CC3D9');
-          });
-          restart.addEventListener('click', () => {
-            startGame();
-          });
-        }
-
+       
         document.addEventListener('DOMContentLoaded', () => {
           initTargets();
           initRestart();
           startGame();
         });
+function initRestart() {
+  const restart = gameOverUI.querySelector('.restart'); // this IS the <a-plane>
+
+  restart.addEventListener('mouseenter', () => {
+    restart.setAttribute('color', '#FFC65D');
+  });
+
+  restart.addEventListener('mouseleave', () => {
+    restart.setAttribute('color', '#4CC3D9');
+  });
+
+  restart.addEventListener('click', () => {
+    startGame();
+  });
+}
 
         // Hide the tips overlay once we go immersive
         const scene = document.querySelector('a-scene');
